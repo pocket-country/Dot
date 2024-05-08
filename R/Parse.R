@@ -1,4 +1,4 @@
-# develop processing functions to use in Dot.R
+# Define functions used in Dot.R
 
 # must include library data.tree for node functions/tree data structure.
 
@@ -62,32 +62,38 @@ dparse <- function(tt) {
 expr <- function() {
   # have to make node first so can pass in to calls creating children for numbering - kinda awkward
   # but has to do with needing to assign unique names to children
-  enode <- Node$new("Expression", sval = "Root")  #will be root node
+  enode <- Node$new("Expression", token = "N/A", sval = "Root")  #will be root node
   
   enode$AddChildNode((binary("C")))
   return(enode)
 }
 
 binary <- function(idc) {
-  # get the RHS node
-  expr <- primary("L")
+  # get the RHS node - we expect this to be a primary (the only primary is Digit) ... needs error checking
+  right <- primary("R")
   
-  #right had side can be another binary ...
+  # record the operator - the token value - call to primary has consumed the RHS token
+  op_value = tokens[current,]$value
+  
+  #If we find an operator, look for the other side of the equation.  Can be another binary ...
   while(match("Operator")) {
-    #operator = previous()
-    right <- primary("R")
-    tmp <- Node$new(paste("Binary",idc,sep="_"), token = "Operator", sval = tokens[current,]$value)
-    tmp$AddChildNode(expr)
+    left <- primary("L")
+    # make a node to hold the results, ... 
+    tmp <- Node$new(paste("Binary",idc,sep="_"), token = "Operator", sval = op_value)
     tmp$AddChildNode(right)
+    tmp$AddChildNode(left)
     expr <- tmp
   }
   return(expr)
 }
 
 primary <- function(idc) {
+
+  # record the operator in the token - should be a digit - before match moves pointer
+  op_value = tokens[current,]$value
   
   if (match("Digit")) {
-    return(Node$new(paste("Unary",idc,sep="_"), token = "Digit", sval = tokens[current,]$value))
+    return(Node$new(paste("Unary",idc,sep="_"), token = "Digit", sval = op_value))
   }
   ## if we are here is an error of some kind - need error handling
 }
