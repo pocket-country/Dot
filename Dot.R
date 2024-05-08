@@ -1,4 +1,4 @@
-#
+# Dot.R - A "toy" demo recursive descent parser for expressions hand crafted in the R programming language!
 #ToDo:
 # - (OK) implement + operator (i.e. pull from input not fixed)
 #        -- this sets the stage for general set of operators
@@ -32,13 +32,27 @@ ui <- fluidPage(
   titlePanel(
     h4("===   Dot   ===", style = "text-align:center")
   ),
+  tags$head(
+      tags$style(HTML("hr {border-top: 1px solid #000000;}"))
+  ),
   sidebarLayout(
     sidebarPanel(
+      # so this "stuff" will appear in the sidebar - but because the app doesn't open in full screen mode
+      # (or even close) it just squishes it up to the top, looks odd.
       "Settings",
-      textInput("textin","Input Text"),
+      textInput("textin","Enter expression text here"),
       #checkboxInput("isfile","Use input as filename"),  ## currently unused
       hr(),
-      actionButton("exitbutton","Quit")
+      p("Dot functionality - quit here or use buttons in processing sequence section below! "),
+      actionButton("exitbutton","Quit"),
+      hr(),
+      HTML(r"[
+          <p>DOT Grammer</p>
+          <ul>
+          <li> first rule here </li>
+          <li> second rule here </li>
+          </ul>
+        ]")
     ),
     mainPanel(
       h3("Processing Sequence"),
