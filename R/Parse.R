@@ -27,10 +27,10 @@ lexer <- function(rawtext) {
     # so now we have an operator token that combines the two terms on either side of it, 
     # with the value of the token determining the operation.  
     if (grepl("\\*",char)) {
-      tokens <- rbind(tokens,list(token = "Operator", value = "*"))
+      tokens <- rbind(tokens,list(token = "TIMES", value = "*"))
     }
     if (grepl("\\+",char)) {
-      tokens <- rbind(tokens,list(token = "Operator", value = "+"))
+      tokens <- rbind(tokens,list(token = "PLUS", value = "+"))
     }
     
     ptr = ptr + 1
@@ -48,52 +48,64 @@ lexer <- function(rawtext) {
 ## this clutters up the function calls with characters passed in used to distinguish child node names.
 ## (variable idc = index character)
 
-#naming it dparse so as to avoid conflict with built in parse() function
+#naming function dot_parse (and dot_term, dot_factor ...) so as to avoid conflict with built in parse() function
 #I really need to better understand scoping rules.  Where are all these tables stored?  Global? 
 # how can I encapsulate them?
 
-dparse <- function(tt) {
+dot_parse <- function(tt) {
   # assume we have a table of tokens tt, set current pointer, call first production function/rule
   current <<- 1
   tokens <<- tt
-  rootnode <- expr()
+  rootnode <- dot_expr()
   return(rootnode)
 }
-expr <- function() {
+dot_expr <- function() {
   # have to make node first so can pass in to calls creating children for numbering - kinda awkward
   # but has to do with needing to assign unique names to children
-  enode <- Node$new("Expression", token = "N/A", sval = "Root")  #will be root node
+  enode <- Node$new("E", production = "Expr", sval = "Root")  #will be root node
   
-  enode$AddChildNode((binary("C")))
+  enode$AddChildNode((dot_term("S")))
   return(enode)
 }
 
-binary <- function(idc) {
-  # get the RHS node - we expect this to be a primary (the only primary is Digit) ... needs error checking
-  right <- primary("R")
-  
+dot_term <- function(idc) {
+  # evaluate first part of production rule.  Either to be returned as "pass thru" or as LHS of binary
+  expr <- dot_factor("L")
   # record the operator - the token value - call to primary has consumed the RHS token
   op_value = tokens[current,]$value
-  
-  #If we find an operator, look for the other side of the equation.  Can be another binary ...
-  while(match("Operator")) {
-    left <- primary("L")
-    # make a node to hold the results, ... 
-    tmp <- Node$new(paste("Binary",idc,sep="_"), token = "Operator", sval = op_value)
+  #If we find a plus operator, look for the other side of the equation.  Can be another factor
+  while(match("PLUS")) {
+    # get RHS ... this is the */'one or more' in the production rule
+    right <- dot_factor("R")
+    # make a node to hold the results, add expr as LHS.  
+    # am using a tmp variable as don't want to overwrite expr ... this isn't Java
+    tmp <- Node$new(idc, production = "Term", sval = op_value)
+    tmp$AddChildNode(expr)
     tmp$AddChildNode(right)
-    tmp$AddChildNode(left)
+    expr <- tmp # with expr captured as a child at this point
+  }
+  return(expr)  # either as computed in first factor eval or as computed in while
+}
+
+dot_factor <- function(idc) { #same logic so leave out comments
+  expr <- dot_primary("L")
+  op_value = tokens[current,]$value
+  while(match("TIMES")) {
+    right <- dot_primary("R")
+    tmp <- Node$new(idc, production = "Factor", sval = op_value)
+    tmp$AddChildNode(expr)
+    tmp$AddChildNode(right)
     expr <- tmp
   }
   return(expr)
 }
 
-primary <- function(idc) {
-
-  # record the operator in the token - should be a digit - before match moves pointer
-  op_value = tokens[current,]$value
-  
+dot_primary <- function(idc) {
+  # record literal value - should be a digit - before match moves pointer
+  literal_value = tokens[current,]$value
+  # only digits for now, add test for paren when adding grouping
   if (match("Digit")) {
-    return(Node$new(paste("Unary",idc,sep="_"), token = "Digit", sval = op_value))
+    return(Node$new(idc, production = "Primary", sval = literal_value))
   }
   ## if we are here is an error of some kind - need error handling
 }
