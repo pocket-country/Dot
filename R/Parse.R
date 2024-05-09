@@ -14,11 +14,23 @@ lexer <- function(rawtext) {
   ptr <- 1
   tokens <-data.frame(token = character(), value = integer(), stringsAsFactors = FALSE)
   
-  # no error handling - silently ignore characters not in grammar
+  # no real robust error handling - 
+  # for multi char token error handling, restructure by splitting into outer & inner - inner
+  # returns token or error, outer handles rbind token to frame, catches error
   while (ptr <= length(buffer)) { 
   
     char <- buffer[ptr]  # [[]][] notation yr kidding me!
-  
+    
+    #simple error handling works only as we have single character tokens ...
+    # ... allow these or space, that is it!
+    if (!grepl("[0123456789+*-s/ ]",char)) {
+      if (!isRunning()) {stop("Invalid character in input.")}  #not in shiny app, report error and quit
+      #otherwise return an error message for Shiny to post
+      # !! shiny UI element is expecting a table, what will it do with a string?
+      return("Invalid character in input.")
+    }
+    # silently ignore spaces, so whitespace handled.  if processing file input would have to look for \n \t
+    # also ... no comments.  So this is very simple!
     if (grepl("[0123456789]",char)) {
       # removed strtoi() so token values will be stored as strings? Characters?  Is there a diff in R (there is in C)?
       # tokens <- rbind(tokens,list(token = "Digit", value = strtoi(char)))
@@ -27,12 +39,17 @@ lexer <- function(rawtext) {
     # so now we have an operator token that combines the two terms on either side of it, 
     # with the value of the token determining the operation.  
     if (grepl("\\*",char)) {
-      tokens <- rbind(tokens,list(token = "TIMES", value = "*"))
+      tokens <- rbind(tokens,list(token = "STAR", value = "*"))
     }
     if (grepl("\\+",char)) {
       tokens <- rbind(tokens,list(token = "PLUS", value = "+"))
     }
-    
+    if (grepl("\\-",char)) {
+      tokens <- rbind(tokens,list(token = "MINUS", value = "-"))
+    }
+    if (grepl("\\/",char)) {
+      tokens <- rbind(tokens,list(token = "SLASH", value = "/"))
+    }
     ptr = ptr + 1
   }
   # add an EOF token to mark the end of the stream
@@ -79,7 +96,7 @@ dot_parse <- function(tt) {
   tokens <<- tt   # global token table being processed
   GID <<- 0       # next avaliable global node ID 
   rootnode <- dot_expr()
-  rootnode$Do(function(node) SetNodeStyle(node, label = paste(node$name,"/",node$sval), shape = "square"))
+  rootnode$Do(function(node) SetNodeStyle(node, label = paste0("N",node$name,":  ",node$sval), shape = "square"))
   return(rootnode)
 }
 dot_expr <- function() {
@@ -97,7 +114,7 @@ dot_term <- function() {
   # record the operator - the token value - call to primary has consumed the RHS token
   op_value = tokens[current,]$value
   #If we find a plus operator, look for the other side of the equation.  Can be another factor
-  while(match("PLUS")) {
+  while(match(c("PLUS","MINUS"))) {
     # get RHS ... this is the */'one or more' in the production rule
     right <- dot_factor()
     # make a node to hold the results, add expr as LHS.  
@@ -113,7 +130,7 @@ dot_term <- function() {
 dot_factor <- function() { #same logic so leave out comments
   expr <- dot_primary()
   op_value = tokens[current,]$value
-  while(match("TIMES")) {
+  while(match(c("STAR","SLASH"))) {
     right <- dot_primary()
     tmp <- Node$new(ggid(), production = "Factor", sval = op_value)
     tmp$AddChildNode(expr)
@@ -130,7 +147,12 @@ dot_primary <- function() {
   if (match("Digit")) {
     return(Node$new(ggid(), production = "Primary", sval = literal_value))
   }
-  ## if we are here is an error of some kind - need error handling
+  ## if we are here is an error of some kind
+  if (!isRunning()) {stop("Malformed expression.")}  #not in shiny app, report error and quit
+  #otherwise return an error message for Shiny to post
+  # shiny UI element is expecting a graph object, what will it do with a string? barfs.  
+  # so make a node
+  return(Node$new(ggid(), production = "ERROR", sval = "Malformed Expression"))
 }
 
 ## helper functions that work with the data frame holding the tokens
@@ -184,12 +206,12 @@ previous <- function() {
 dot_eval <- function(ast) {
   if (isLeaf(ast) ) {
     print(ast$name)
-    #just return value
+    #just return value; need to test transform worked to catch error 'signal'
     return(strtoi(ast$sval))
   }
   else {
     print(ast$name)
-    # could probably write this more efficently, but going for clarity
+    # could probably write this more efficiently, but going for clarity
     # we only have unary & binary operations and our only unary operation is 
     # expr/grouping, which simply returns a value (i.e. don't have negation, ..)
     # so, ...
@@ -204,7 +226,9 @@ dot_eval <- function(ast) {
       # combine as per operator - only have two at this point
       switch (ast$sval, 
         "+" = return(v1+v2),
-        "*" = return(v1*v2)
+        "*" = return(v1*v2),
+        "-" = return(v1-v2),
+        "/" = return(v1/v2)
       )
       # if we are here we have a problem
     }

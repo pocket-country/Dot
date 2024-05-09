@@ -55,8 +55,10 @@ ui <- fluidPage(
       HTML(r"[
           <p>DOT Grammer</p>
           <ul>
-          <li> first rule here </li>
-          <li> second rule here </li>
+          <li> Expr -> term</li>
+          <li> Term -> Factor ("+" Factor)* </li>
+          <li> Factor -> Primary ("*" Primary)* </li>
+          <li> Primary -> DIGIT
           </ul>
         ]")
     ),
@@ -66,20 +68,22 @@ ui <- fluidPage(
       #h2("Raw Input"),
       #textOutput("echo_out"),
       
-      h2("Tokens"),
       actionButton("lexit","Run Lexer"),
+      h2("Tokens"),
       tableOutput("lex_out"),
       
-      h2("AST"),
       actionButton("parseit","Run Parser"),
-      grVizOutput("ast")
+      h2("AST"),
+      grVizOutput("ast"),
       
+      actionButton("evalit","Evaluate AST"),
+      h2("Value"),
+      textOutput("result")
     )
   )
 )
 
 server <- function(input, output) {
-  
   #echo raw input
   #output$echo_out <- renderText({
   #  req(input$textin)
@@ -106,6 +110,14 @@ server <- function(input, output) {
   output$ast <- renderGrViz({
     #rn()
     plot(rn())
+  })
+  
+  #finally, we can evaluate the AST
+  ev <- eventReactive(input$evalit, {
+    dot_eval(rn())
+  })
+  output$result <- renderText({
+    ev()
   })
 }
 
