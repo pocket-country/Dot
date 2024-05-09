@@ -179,3 +179,34 @@ previous <- function() {
 }
 
 ## End of helper functions
+
+## a simple evaluate function
+dot_eval <- function(ast) {
+  if (isLeaf(ast) ) {
+    print(ast$name)
+    #just return value
+    return(strtoi(ast$sval))
+  }
+  else {
+    print(ast$name)
+    # could probably write this more efficently, but going for clarity
+    # we only have unary & binary operations and our only unary operation is 
+    # expr/grouping, which simply returns a value (i.e. don't have negation, ..)
+    # so, ...
+    if (ast$count == 1) {
+      #no unary operator so just return value of expression
+      return(dot_eval(ast$children[[1]]))
+    }
+    if (ast$count == 2 ) {
+      # get the two values for binary operator
+      v1 = dot_eval(ast$children[[1]])
+      v2 = dot_eval(ast$children[[2]])
+      # combine as per operator - only have two at this point
+      switch (ast$sval, 
+        "+" = return(v1+v2),
+        "*" = return(v1*v2)
+      )
+      # if we are here we have a problem
+    }
+  }
+}

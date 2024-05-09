@@ -3,28 +3,32 @@
 # - (OK) implement + operator (i.e. pull from input not fixed)
 #        -- this sets the stage for general set of operators
 # - implement () for grouping ... this will really show of recursion vs regex
-# - Figure out operator precedence -- there is some default precedence built in - so can talk about it at prezzie.  
-#   (May have to do a term/factor thing to show off how () affect precedence)
+# - (OK) Figure out operator precedence -- did with proper grammar -  term/factor thing
 # - error handling
 # - - invalid characters
 # - - incorrect syntax
-# - evaluate using traverse function
+# - evaluate
+#     - Initial thought would be to build on data.tree internal traversal functions
+#     - But I'm not sure would work, convoluted, how to hold state, spend too much time on data.tree internals
+#     - when just writing a set of recursive tree walk eval functions is easy.
+#     - This essentially replicates the set of parse functions, in Java we avoid this using the Visitor Pattern
 # - token types: 
 #     -- (OK) operator 
 #     -- (OKish) numeric - have my lame ass Digit
-#     -- literal (whut for strings)?
-#     -- oh yea and parens & other syntax elements ... 
+#     -- Strings?  What functionality
+#     -- oh yea parenthesis & other syntax elements ... 
 # - actual multi-digit numbers, 0 + pos integers (overflow?)
 # - text panel with grammar & explanation
-# - open in 'full screen' size ....
+# - open in 'full screen' size .... Not an issue on Linux side!
 # - L8ter make a package
-# - plot display token type/value rather than node ID
-# - figure out github push to facilitating working 'at home'
+# - (OK) plot display token type/value rather than node ID
+# - (OK) figure out github push to facilitating working 'at home'
 #
 library(shiny)
 library(data.tree)
 library(DiagrammeR) #graph viz HTML widget to render tree data
 library(igraph)     #Not sure if needed - for node plotting functions, such as SetNodeStyle   
+
 ## Lexing and parsing functions should come in automatically from Parse.R in ./R folder 
 ## according to anonymous sources on the interweb.  We shall see.
 
