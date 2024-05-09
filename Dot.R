@@ -18,15 +18,17 @@
 # - text panel with grammar & explanation
 # - open in 'full screen' size ....
 # - L8ter make a package
-# - !!!!! plot display token type/value rather than node ID
+# - plot display token type/value rather than node ID
 # - figure out github push to facilitating working 'at home'
 #
 library(shiny)
 library(data.tree)
-library(DiagrammeR)    #graph viz HTML widget to render tree data
-
+library(DiagrammeR) #graph viz HTML widget to render tree data
+library(igraph)     #Not sure if needed - for node plotting functions, such as SetNodeStyle   
 ## Lexing and parsing functions should come in automatically from Parse.R in ./R folder 
 ## according to anonymous sources on the interweb.  We shall see.
+
+## Magic Function to format nodes, hard won knowledge: tast$Do(function(node) SetNodeStyle(node, label = node$sval, shape = "square"))
 
 ui <- fluidPage(
   titlePanel(
@@ -94,11 +96,10 @@ server <- function(input, output) {
   
   # same strategy to generate and render AST
   rn <- eventReactive(input$parseit, {
-    dparse(tt())
+    dot_parse(tt())
     #as.data.frame(matrix(runif(n=100),nrow=50))
   })
   output$ast <- renderGrViz({
-    #plot(rn())
     #rn()
     plot(rn())
   })

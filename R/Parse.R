@@ -52,34 +52,57 @@ lexer <- function(rawtext) {
 #I really need to better understand scoping rules.  Where are all these tables stored?  Global? 
 # how can I encapsulate them?
 
+# also using some global variables which makes me uncomfortable.  Can I have "global to script" vars in R
+# - current
+# - tokens
+# - GID
+
+ggid <- function() {
+  ## maintain a global ID number for nodes
+  # node names have to be unique across siblings, not globaly
+  # I tried to create a scheme of labeling them "L" and "R" but was tripped up by the 
+  # recursive nature of the parser calls ... 'pass through' would assign same name twice
+  # which means the second child added would overwrite the first ... this took a while to 
+  # track down.
+  # So a global ID number will (over)satisify this requirement & declutter the parser function 
+  # signature (no passing idc) - at the expense of maintaining a global var and a helper function
+  # and since there is no concurrency at the moment, well it will work
+  # Note when we get famous and this is a web app with multiple instances running we will have to revisit
+  gidstr <- toString(GID)
+  GID <<- GID + 1
+  return(gidstr)
+  }
+
 dot_parse <- function(tt) {
   # assume we have a table of tokens tt, set current pointer, call first production function/rule
-  current <<- 1
-  tokens <<- tt
+  current <<- 1   # pointer to current row in token table being processed
+  tokens <<- tt   # global token table being processed
+  GID <<- 0       # next avaliable global node ID 
   rootnode <- dot_expr()
+  rootnode$Do(function(node) SetNodeStyle(node, label = paste(node$name,"/",node$sval), shape = "square"))
   return(rootnode)
 }
 dot_expr <- function() {
   # have to make node first so can pass in to calls creating children for numbering - kinda awkward
   # but has to do with needing to assign unique names to children
-  enode <- Node$new("E", production = "Expr", sval = "Root")  #will be root node
+  enode <- Node$new(ggid(), production = "Expr", sval = "Root")  #will be root node
   
-  enode$AddChildNode((dot_term("S")))
+  enode$AddChildNode(dot_term())
   return(enode)
 }
 
-dot_term <- function(idc) {
+dot_term <- function() {
   # evaluate first part of production rule.  Either to be returned as "pass thru" or as LHS of binary
-  expr <- dot_factor("L")
+  expr <- dot_factor()
   # record the operator - the token value - call to primary has consumed the RHS token
   op_value = tokens[current,]$value
   #If we find a plus operator, look for the other side of the equation.  Can be another factor
   while(match("PLUS")) {
     # get RHS ... this is the */'one or more' in the production rule
-    right <- dot_factor("R")
+    right <- dot_factor()
     # make a node to hold the results, add expr as LHS.  
     # am using a tmp variable as don't want to overwrite expr ... this isn't Java
-    tmp <- Node$new(idc, production = "Term", sval = op_value)
+    tmp <- Node$new(ggid(), production = "Term", sval = op_value)
     tmp$AddChildNode(expr)
     tmp$AddChildNode(right)
     expr <- tmp # with expr captured as a child at this point
@@ -87,12 +110,12 @@ dot_term <- function(idc) {
   return(expr)  # either as computed in first factor eval or as computed in while
 }
 
-dot_factor <- function(idc) { #same logic so leave out comments
-  expr <- dot_primary("L")
+dot_factor <- function() { #same logic so leave out comments
+  expr <- dot_primary()
   op_value = tokens[current,]$value
   while(match("TIMES")) {
-    right <- dot_primary("R")
-    tmp <- Node$new(idc, production = "Factor", sval = op_value)
+    right <- dot_primary()
+    tmp <- Node$new(ggid(), production = "Factor", sval = op_value)
     tmp$AddChildNode(expr)
     tmp$AddChildNode(right)
     expr <- tmp
@@ -100,12 +123,12 @@ dot_factor <- function(idc) { #same logic so leave out comments
   return(expr)
 }
 
-dot_primary <- function(idc) {
+dot_primary <- function() {
   # record literal value - should be a digit - before match moves pointer
   literal_value = tokens[current,]$value
   # only digits for now, add test for paren when adding grouping
   if (match("Digit")) {
-    return(Node$new(idc, production = "Primary", sval = literal_value))
+    return(Node$new(ggid(), production = "Primary", sval = literal_value))
   }
   ## if we are here is an error of some kind - need error handling
 }
