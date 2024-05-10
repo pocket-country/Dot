@@ -7,7 +7,7 @@
 # - error handling
 # - - invalid characters
 # - - incorrect syntax
-# - evaluate
+# - (OK) evaluate (Was a simple little recursive function.  ignore complexity below easier to do than to think about)
 #     - Initial thought would be to build on data.tree internal traversal functions
 #     - But I'm not sure would work, convoluted, how to hold state, spend too much time on data.tree internals
 #     - when just writing a set of recursive tree walk eval functions is easy.
@@ -16,7 +16,7 @@
 #     -- (OK) operator 
 #     -- (OKish) numeric - have my lame ass Digit
 #     -- Strings?  What functionality
-#     -- oh yea parenthesis & other syntax elements ... 
+#     -- oh yea (OK) parenthesis & other syntax elements ... 
 # - actual multi-digit numbers, 0 + pos integers (overflow?)
 # - text panel with grammar & explanation
 # - open in 'full screen' size .... Not an issue on Linux side!
@@ -49,36 +49,40 @@ ui <- fluidPage(
       textInput("textin","Enter expression text here"),
       #checkboxInput("isfile","Use input as filename"),  ## currently unused
       hr(),
-      p("Dot functionality - quit here or use buttons in processing sequence section below! "),
-      actionButton("exitbutton","Quit"),
-      hr(),
-      HTML(r"[
-          <p>DOT Grammer</p>
-          <ul>
-          <li> Expr -> term</li>
-          <li> Term -> Factor (("+"|"-") Factor)* </li>
-          <li> Factor -> Primary (("*"|"/") Primary)* </li>
-          <li> Primary -> DIGIT
-          </ul>
-        ]")
+      p("Dot functionality - quit here or use buttons in processing tab panel!"),
+      actionButton("exitbutton","Quit")
     ),
     mainPanel(
-      h3("Processing Sequence"),
+      tabsetPanel( 
+        tabPanel("Processing",
+          
+          #h2("Raw Input"),
+          #textOutput("echo_out"),
       
-      #h2("Raw Input"),
-      #textOutput("echo_out"),
+          actionButton("lexit","Run Lexer"),
+          h2("Tokens"),
+          tableOutput("lex_out"),
       
-      actionButton("lexit","Run Lexer"),
-      h2("Tokens"),
-      tableOutput("lex_out"),
+          actionButton("parseit","Run Parser"),
+          h2("AST"),
+          grVizOutput("ast"),
       
-      actionButton("parseit","Run Parser"),
-      h2("AST"),
-      grVizOutput("ast"),
-      
-      actionButton("evalit","Evaluate AST"),
-      h2("Value"),
-      textOutput("result")
+          actionButton("evalit","Evaluate AST"),
+          h2("Value"),
+          textOutput("result")
+        ),
+        tabPanel("Grammar",
+          HTML(r"[
+          <p>DOT Grammer</p>
+          <h2><ul>
+          <li> Expr -> Term</li>
+          <li> Term -> Factor (("+" | "-") Factor)* </li>
+          <li> Factor -> Primary (("*" | "/") Primary)* </li>
+          <li> Primary -> DIGIT | "(" Expr ")"
+          </ul></h2>
+          ]")
+        )
+      )
     )
   )
 )
