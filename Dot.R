@@ -56,8 +56,8 @@ ui <- fluidPage(
           <p>DOT Grammer</p>
           <ul>
           <li> Expr -> term</li>
-          <li> Term -> Factor ("+" Factor)* </li>
-          <li> Factor -> Primary ("*" Primary)* </li>
+          <li> Term -> Factor (("+"|"-") Factor)* </li>
+          <li> Factor -> Primary (("*"|"/") Primary)* </li>
           <li> Primary -> DIGIT
           </ul>
         ]")

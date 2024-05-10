@@ -23,10 +23,10 @@ lexer <- function(rawtext) {
     
     #simple error handling works only as we have single character tokens ...
     # ... allow these or space, that is it!
-    if (!grepl("[0123456789+*-s/ ]",char)) {
+    if (!grepl("[0123456789+*-\\(\\) ]",char)) {
       if (!isRunning()) {stop("Invalid character in input.")}  #not in shiny app, report error and quit
       #otherwise return an error message for Shiny to post
-      # !! shiny UI element is expecting a table, what will it do with a string?
+      # Shiny UI element is expecting a table, what will it do with a string?
       return("Invalid character in input.")
     }
     # silently ignore spaces, so whitespace handled.  if processing file input would have to look for \n \t
@@ -49,6 +49,12 @@ lexer <- function(rawtext) {
     }
     if (grepl("\\/",char)) {
       tokens <- rbind(tokens,list(token = "SLASH", value = "/"))
+    }
+    if (grepl("\\(",char)) {
+      tokens <- rbind(tokens,list(token = "LPAREN", value = "("))
+    }
+    if (grepl("\\)",char)) {
+      tokens <- rbind(tokens,list(token = "RPAREN", value = ")"))
     }
     ptr = ptr + 1
   }
@@ -95,14 +101,16 @@ dot_parse <- function(tt) {
   current <<- 1   # pointer to current row in token table being processed
   tokens <<- tt   # global token table being processed
   GID <<- 0       # next avaliable global node ID 
-  rootnode <- dot_expr()
+  #kick it off
+  rootnode <- dot_expr("Root")
+  # set up what is plotted, shapes, etc here
   rootnode$Do(function(node) SetNodeStyle(node, label = paste0("N",node$name,":  ",node$sval), shape = "square"))
   return(rootnode)
 }
-dot_expr <- function() {
+
+dot_expr <- function(tv) {
   # have to make node first so can pass in to calls creating children for numbering - kinda awkward
-  # but has to do with needing to assign unique names to children
-  enode <- Node$new(ggid(), production = "Expr", sval = "Root")  #will be root node
+  enode <- Node$new(ggid(), production = "Expr", sval = tv)
   
   enode$AddChildNode(dot_term())
   return(enode)
@@ -143,11 +151,18 @@ dot_factor <- function() { #same logic so leave out comments
 dot_primary <- function() {
   # record literal value - should be a digit - before match moves pointer
   literal_value = tokens[current,]$value
-  # only digits for now, add test for paren when adding grouping
+  # is it a Digit?  Someday this might grow up and be an actual number!
   if (match("Digit")) {
     return(Node$new(ggid(), production = "Primary", sval = literal_value))
   }
-  ## if we are here is an error of some kind
+  # handle parens for grouping, used to change precedence
+  if (match("LPAREN")) {
+    expr = dot_expr("()")
+    if (consume("RPAREN")) {
+      return(expr)
+    }
+  }
+  ## if we are here is an error of some kind ... missing closing paren?  Valid token in wrong order?
   if (!isRunning()) {stop("Malformed expression.")}  #not in shiny app, report error and quit
   #otherwise return an error message for Shiny to post
   # shiny UI element is expecting a graph object, what will it do with a string? barfs.  
@@ -172,7 +187,15 @@ match <- function(types) {
   }
   return(FALSE)
 }
-
+# consume just uses up a token, provided it is the right kind
+consume <- function(type) {
+  if (check(type)) {
+    advance() 
+    return(TRUE)
+  }
+  # error here
+  return(FALSE)
+}
 #helper helper functions
 check <- function(type) {
   if(isAtEnd()) return(FALSE)
@@ -205,12 +228,12 @@ previous <- function() {
 ## a simple evaluate function
 dot_eval <- function(ast) {
   if (isLeaf(ast) ) {
-    print(ast$name)
+    #print(ast$name)
     #just return value; need to test transform worked to catch error 'signal'
     return(strtoi(ast$sval))
   }
   else {
-    print(ast$name)
+    #print(ast$name)
     # could probably write this more efficiently, but going for clarity
     # we only have unary & binary operations and our only unary operation is 
     # expr/grouping, which simply returns a value (i.e. don't have negation, ..)
